@@ -1,144 +1,120 @@
-// This script will create an L4 menger sponge using planes to optimize the scene
-// It quickly generates an L4 Menger sponge using only 984 vertices!!!! 
+if (BABYLON.Engine.isSupported()) {
 
-window.addEventListener('DOMContentLoaded', function(){
-        
-    // get the canvas DOM element
-    var canvas = document.getElementById('renderCanvas');
-    
-    // load the 3D engine
-    var engine = new BABYLON.Engine(canvas, true);
-    
-    // createScene function that creates and return the scene
-    var createScene = function(){
+
+
+window.onload = function() {
+   
+        var maxInterval = 1;  
+        const remove = [4, 10, 12, 13, 14, 16, 22];
+        const scales = [243, 81, 27, 9, 3 ,1, 1/3];
+        const cloneScales = [1, 1/3, 1/9, 1/27, 1/81, 1/243];
         var meshes = [];
-        // create a basic BJS Scene object
-        var scene = new BABYLON.Scene(engine);
 
-        var multimat = new BABYLON.MultiMaterial('multi', scene);
+        function createScene(engine, canvas){
 
-        // create a FreeCamera, and set its position to (x:0, y:5, z:-10)
-        var camera = new BABYLON.FreeCamera('camera1', new BABYLON.Vector3(0, 70, -100), scene);
+            var scene = new BABYLON.Scene(engine);
 
-        // target the camera to scene origin
-        camera.setTarget(new BABYLON.Vector3(0,15,0));
+            var camera = new BABYLON.FreeCamera('camera1', new BABYLON.Vector3(0, 345, -1050), scene);
+            camera.setTarget(new BABYLON.Vector3(0,0,0));
+            camera.attachControl(canvas, false);
 
-        // attach the camera to the canvas
-        camera.attachControl(canvas, false);
+            var hlight = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(0,1,1), scene);
+            hlight.intensity = .3;
 
-        // create basic lights, aiming 0,1,0 - meaning, to the sky
-        var hlight3 = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(0,1,1), scene);
+            var plight1 = new BABYLON.PointLight("pointLight", new BABYLON.Vector3(-600, 50, 0), scene);
+            var plight2 = new BABYLON.PointLight("pointLight", new BABYLON.Vector3(0, -600, 0), scene);
+            var plight3 = new BABYLON.PointLight("pointLight", new BABYLON.Vector3(0, 250, -600), scene);
+            plight1.diffuse = new BABYLON.Color3(1, .2, .2);
+            plight2.diffuse = new BABYLON.Color3(.2, 1, .2);
+            plight3.diffuse = new BABYLON.Color3(.2, .2, 1);
 
-        hlight3.intensity = .3;
+            return scene;
+        }
 
-        var plight1 = new BABYLON.PointLight("pointLight", new BABYLON.Vector3(5600, 600, 5600), scene);
-        var plight2 = new BABYLON.PointLight("pointLight", new BABYLON.Vector3(-5600, -5600, -5600), scene);
-        var plight3 = new BABYLON.PointLight("pointLight", new BABYLON.Vector3(5600, 5600, 0), scene);
+        // create multiple menger sponges
+        function createSponge(scene, mat){
 
-        plight1.intensity = .5;
-        plight2.intensity = .4;
-        plight3.intensity = .3;
+            // create an initial block to prime the template
+            let template = BABYLON.MeshBuilder.CreateBox("box", {height: 243, width: 243, depth: 243}, scene);
 
-        plight1.diffuse = new BABYLON.Color3(1, .5, .5);
-        plight2.diffuse = new BABYLON.Color3(.5, 1, .5);
-        plight3.diffuse = new BABYLON.Color3(.2, .2, 1);
+            // create a template and 4 menger sponges
+            // use the previous mesh sponge as a template block for the next sponge
+            for (let j = 0; j <= 4; j++){
 
-        buildMats(scene);
-        buildSpongePlanes(scene, meshes, multimat);
+                calculateCenters(new BABYLON.Vector3(0,0,0), 1, template);
 
-        function Init3DimensionalArray(xmax, ymax, zmax, def) {
-            var r, x, y, z;
-            for (r = [], x = 0; x < xmax; x++)
-                for (r [x] = [], y = 0; y < ymax; y++)
-                     for (r [x][y] = [], z = 0; z < zmax; z++)
-                          r [x][y][z] = def; 
-            return r;
-        } 
-        var my3DimArray = Init3DimensionalArray(5, 5, 5, true);
-        console.log(my3DimArray)
+                template = BABYLON.Mesh.MergeMeshes(meshes, true, true);
+                template.position = new BABYLON.Vector3(-500+(250*j),0,0);
+                template.name = "box"+j;
 
-        var convertToFlat = function () {
-            for (var index = 0; index < scene.textures.length; index++) {
-                scene.textures[index].updateSamplingMode(BABYLON.Texture.NEAREST_LINEAR);
+                meshes = [];
+
+                // increase the max interval after the initial template creation
+                if (maxInterval === 1) 
+                    maxInterval = 2;
+            }
+            // dispose of the initial box template
+            scene.getMeshByName('box').dispose();
+        }
+
+        // Recursively calculate 27 centers of surrounding blocks
+        function calculateCenters(center, interval, template){
+
+            // If complexity is reached then render the template and return
+            if (interval === maxInterval){
+
+                let box = template.clone("clone");    
+
+                box.scaling = new BABYLON.Vector3(cloneScales[interval-1],cloneScales[interval-1],cloneScales[interval-1]);
+                box.position = center;
+
+                meshes.push(box);
+
+                return;
+            }
+
+            // Get the scale for this intervals centers delta
+            let s3 = scales[interval];
+
+            // Count is the 'location'of the block to determine the removal
+            let count = 0;
+
+            // Calculate the new block centers ignoring the central removed blocks
+            for (let y = center.y-s3; y <= center.y+s3; y+=s3)
+            for (let z = center.z-s3; z <= center.z+s3; z+=s3)
+            for (let x = center.x-s3; x <= center.x+s3; x+=s3){
+                if (!remove.includes(count)) 
+                    calculateCenters(new BABYLON.Vector3(x,y,z), interval+1, template);
+                count++;
             }
         }
 
-        scene.executeWhenReady(function() {
-            convertToFlat();
-        });
-    
-        // return the created scene
-        return scene;
-    }
+        // window.addEventListener('DOMContentLoaded', function(){
 
-    // call the createScene function
-    var scene = createScene();
+            var canvas = document.getElementById('renderCanvas');
+            var engine = new BABYLON.Engine(canvas, true);
+            var scene = createScene(engine, canvas);
 
-    // run the render loop
-    engine.runRenderLoop(function(){
-        scene.render();
-        // console.log("indices:", scene.getActiveIndices())
-        // console.log("meshes:", scene.getActiveMeshes())
-    });
+            createSponge(scene);
+            document.getElementById("calculating").style.display = "none"
 
-    // the canvas/window resize event handler
-    window.addEventListener('resize', function(){
-        engine.resize();
-    });
-});
+            // scene.getMeshByName('box0').dispose();
+            // scene.getMeshByName('box1').dispose();
+            // scene.getMeshByName('box2').dispose();
+            // scene.getMeshByName('box3').dispose();
 
-let mats = [];
+            engine.runRenderLoop(function(){ 
+                scene.render(); 
+                // console.log("indices:", scene.getActiveIndices())
+                // console.log("meshes:", scene.getActiveMeshes())
+            });
 
-function buildMats(scene){
-    for (let m = 0; m < 8; m++){
-        let myMaterial = new BABYLON.StandardMaterial(`material${m}`, scene);
-        myMaterial.diffuseTexture = new BABYLON.Texture(`./${m}.png`, scene);
-        myMaterial.backFaceCulling = false;
-        myMaterial.diffuseTexture.hasAlpha = true;    
-        mats.push(myMaterial)
-    }
-    console.log(mats)
+            window.addEventListener('resize', function(){ 
+                engine.resize(); 
+            });
+        // });
 }
 
-
-function buildSpongePlanes(scene, meshes, multimat){
-
-    // map each plane to the correct texture
-    planeMapping = [0,0,0,0,1,1,0,0,0,
-                    0,2,2,2,3,3,2,2,2,
-                    0,0,0,0,1,1,0,0,0,
-                    0,4,4,4,5,5,4,4,4,
-                    4,6,6,6,7]
-
-    for (let i = 0; i <= 81; i++){
-
-        var myMaterial;
-        
-        // the planes are mirrored around the center
-        if (i <= 40)
-            myMaterial = mats[planeMapping[i]];
-        else
-            myMaterial = mats[planeMapping[81-i]];
-        
-        let myXPlane = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 81, height: 81}, scene);
-        myXPlane.material = myMaterial;        
-        myXPlane.rotation.y = Math.PI/2;
-        myXPlane.position = new BABYLON.Vector3(i-40.5, 0, 40.5);
-        myXPlane.name = `xPlane${i}`;
-        meshes.push(myXPlane);  
-
-        let myYPlane = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 81, height: 81}, scene);
-        myYPlane.material = myMaterial;        
-        myYPlane.rotation.x = Math.PI/2;
-        myYPlane.position = new BABYLON.Vector3(0, i-40.5, 40.5);
-        myYPlane.name = `yPlane${i}`;
-        meshes.push(myYPlane);  
-
-        let myZPlane = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 81, height: 81}, scene);
-        myZPlane.material = myMaterial;
-        myZPlane.position = new BABYLON.Vector3(0, 0, i);
-        myZPlane.name = `zPlane${i}`;
-        meshes.push(myZPlane);  
-
-    }
+}else{
+    alert("WebGL not supported in this browser.");
 }
