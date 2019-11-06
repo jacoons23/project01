@@ -96,8 +96,7 @@ window.onload = function() {
             var scene = createScene(engine, canvas);
 
             createSponge(scene);
-            document.getElementById("calculating").style.display = "none"
-
+            
             // scene.getMeshByName('box0').dispose();
             // scene.getMeshByName('box1').dispose();
             // scene.getMeshByName('box2').dispose();
