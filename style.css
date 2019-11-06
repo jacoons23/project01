@@ -1,0 +1,29 @@
+html, body {
+    overflow: hidden;
+    width   : 100%;
+    height  : 100%;
+    margin  : 0;
+    padding : 0;
+    color: white;
+    background-color: black;
+}
+
+#renderCanvas {
+    width   : 100%;
+    height  : 100%;
+    touch-action: none;
+}
+
+li, h3 {
+    margin: 2px;
+}
+canvas {
+    border:5px solid black;
+    margin: 5px;
+    touch-action: none;
+}
+
+.textcontainer{
+    position:absolute;
+    padding:20px;
+}
